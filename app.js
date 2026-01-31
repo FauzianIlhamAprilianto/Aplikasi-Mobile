@@ -1,3 +1,5 @@
+const API_URL = "https://script.google.com/macros/s/AKfycbxGJ30WhDBQtCjtx4jvgCTf0vYFrsnViZbwyx0mRfXGfzZdnxf9evRBq_RTXfBbvH5u4g/exec";
+
 const dStock = document.getElementById('dStock');
 const dIn = document.getElementById('dIn');
 const dOut = document.getElementById('dOut');
@@ -25,18 +27,44 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-const db = JSON.parse(localStorage.getItem("mbg")) || {
+// DATABASE SPREADSHEET
+let db = {
   incoming: [],
   distribution: [],
   returns: []
 };
 
-function save() {
-  localStorage.setItem("mbg", JSON.stringify(db));
-  renderDashboard();
-  renderRecentActivity()
-  renderReportTable(getAllTransactions());
+async function loadDB() {
+  try {
+    const res = await fetch(API_URL);
+    db = await res.json();
+
+    renderDashboard();
+    renderRecentActivity();
+    renderReportTable(getAllTransactions());
+  } catch (err) {
+    console.error("Gagal load DB:", err);
+  }
 }
+
+async function sendData(data) {
+  const formData = new URLSearchParams(data);
+
+  await fetch(API_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  await loadDB(); // refresh data setelah kirim
+}
+
+
+// function save() {
+//   localStorage.setItem("mbg", JSON.stringify(db));
+//   renderDashboard();
+//   renderRecentActivity()
+//   renderReportTable(getAllTransactions());
+// }
 
 function showPage(id, btn) {
   document.querySelectorAll("main section").forEach(s => s.classList.add("d-none"));
@@ -52,7 +80,7 @@ function stock() {
   return Math.max(db.incoming.filter(d => d.date === today).reduce((a,b)=>a+b.qty,0) - db.distribution.filter(d => d.date === today).reduce((a,b)=>a+b.qty,0), 0);
 }
 
-function addIncoming() {
+async function addIncoming() {
   const qtyInput = Number(inQty.value);
 
   if (qtyInput <= 0 || isNaN(qtyInput)) {
@@ -61,17 +89,13 @@ function addIncoming() {
     return;
   }
 
-  const incomingQty =
-    incomingMode === "DATANG" ? qtyInput : -qtyInput;
-
-  db.incoming.push({
+  await sendData({
+    type: "INCOMING",
     date: inDate.value,
-    qty: incomingQty,
-    rep: inRep.value,
+    qty: incomingMode === "DATANG" ? +inQty.value : -inQty.value,
     notes: inNotes.value
   });
 
-  save();
   showSuccessToast("Data berhasil disimpan ✅");
   document.getElementById("inNotes").value = "";
   document.getElementById("inQty").value = "";
@@ -79,7 +103,7 @@ function addIncoming() {
 }
 
 
-function addDistribution() {
+async function addDistribution() {
   if (outQty.value <= 0) {
     showErrorToast("Quantity wajib diisi dan tidak boleh di bawah 1!");
     outQty.focus();
@@ -100,8 +124,14 @@ function addDistribution() {
     outQty.focus()
     return
   };
-  db.distribution.push({ date: outDate.value, qty:+outQty.value, class:outClass.value, rep:outRep.value, notes: outNotes.value });
-  save();
+  await sendData({
+    type: "DISTRIBUTION",
+    date: outDate.value,
+    qty: +outQty.value,
+    class: outClass.value,
+    rep: outRep.value,
+    notes: outNotes.value
+  });
   showSuccessToast("Data berhasil disimpan ✅");
   document.getElementById("outQty").value = "";
   document.getElementById("outLevelSelect").value = "--Pilih Kelas--";
@@ -111,7 +141,7 @@ function addDistribution() {
   document.getElementById("outClass").value = "";
 }
 
-function addReturn() {
+async function addReturn() {
   if (retQty.value <= 0) {
     showErrorToast("Quantity wajib diisi dan tidak boleh di bawah 1!")
     retQty.focus()
@@ -127,8 +157,14 @@ function addReturn() {
     retRep.focus();
     return
   };
-  db.returns.push({ date: retDate.value, qty:+retQty.value, class:retClass.value, rep:retRep.value, notes: retNotes.value });
-  save();
+  await sendData({
+    type: "RETURN",
+    date: retDate.value,
+    qty: +retQty.value,
+    class: retClass.value,
+    rep: retRep.value,
+    notes: retNotes.value
+  });
   showSuccessToast("Data berhasil disimpan ✅");
   document.getElementById("retQty").value = "";
   document.getElementById("retLevelSelect").value = "--Pilih Kelas--";
@@ -473,8 +509,6 @@ function deleteTransaction(index) {
     db.returns.splice(db.returns.findIndex(d =>
       d.date === item.date && d.qty === item.qty), 1);
   }
-
-  save();
   applyReportFilter();
 }
 
@@ -555,11 +589,9 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
-function clearDB(){
-  localStorage.clear()
-  location.reload()
-}
+// function clearDB(){
+//   localStorage.clear()
+//   location.reload()
+// }
 
-renderDashboard();
-renderRecentActivity()
-renderReportTable(getAllTransactions());
+loadDB();   // bukan renderDashboard langsung
