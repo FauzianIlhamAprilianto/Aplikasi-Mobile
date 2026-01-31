@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbyG26QNqBXRV5-DBV1ALb0-kvJvJMFYrVdM_Mve7hy1HdxGM1kRlvVRXar_EAvmvBC1wA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwpqoGUM16GeN9vGZS8iEIcxl1RRsjFeCTH1q6pqN-OQFCflU8PpMp8z1VqDkkgyi_w4Q/exec";
 
 const dStock = document.getElementById('dStock');
 const dIn = document.getElementById('dIn');
